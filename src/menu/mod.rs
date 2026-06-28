@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::state::GameState;
 use crate::save::save_exists;
+use crate::settings::SettingsReturn;
 
 pub struct MenuPlugin;
 
@@ -77,6 +78,7 @@ fn despawn_menu(mut commands: Commands, query: Query<Entity, With<MenuUi>>) {
 fn button_interactions(
     mut interaction_query: Query<(&Interaction, &MenuButton, &mut BackgroundColor), With<Button>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut settings_return: ResMut<SettingsReturn>,
     mut exit: EventWriter<AppExit>,
 ) {
     for (interaction, button, mut color) in &mut interaction_query {
@@ -88,7 +90,10 @@ fn button_interactions(
             Interaction::Pressed => match button {
                 MenuButton::NewGame => next_state.set(GameState::InGame),
                 MenuButton::Continue => next_state.set(GameState::InGame),
-                MenuButton::Settings => next_state.set(GameState::Settings),
+                MenuButton::Settings => {
+                    settings_return.0 = GameState::MainMenu;
+                    next_state.set(GameState::Settings);
+                }
                 MenuButton::Quit => { exit.write(AppExit::Success); }
             },
             Interaction::Hovered => *color = BackgroundColor(HOVERED_BUTTON),

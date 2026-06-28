@@ -1,27 +1,18 @@
 use bevy::prelude::*;
+use bevy_egui::{egui, EguiContexts};
 use crate::state::GameState;
+use crate::settings::SettingsReturn;
 
 pub struct PausePlugin;
 
 impl Plugin for PausePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, toggle_pause.run_if(in_state(GameState::InGame)))
-           .add_systems(OnEnter(GameState::Paused), spawn_pause_menu)
-           .add_systems(Update, pause_button_interactions.run_if(in_state(GameState::Paused)))
-           .add_systems(OnExit(GameState::Paused), despawn_pause_menu);
+           .add_systems(Update, pause_menu_ui.run_if(in_state(GameState::Paused)));
     }
 }
 
-#[derive(Component)]
-struct PauseUi;
-
-#[derive(Component)]
-enum PauseButton {
-    Resume,
-    Settings,
-    MainMenu,
-}
-
+/// Escape pauses the game from active play.
 fn toggle_pause(
     keys: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
@@ -31,60 +22,40 @@ fn toggle_pause(
     }
 }
 
-fn spawn_pause_menu(mut commands: Commands) {
-    commands.spawn((
-        PauseUi,
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            row_gap: Val::Px(12.0),
-            ..default()
-        },
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
-    )).with_children(|parent| {
-        for (label, action) in [
-            ("Resume", PauseButton::Resume),
-            ("Settings", PauseButton::Settings),
-            ("Main Menu", PauseButton::MainMenu),
-        ] {
-            parent.spawn((
-                action,
-                Button,
-                Node {
-                    width: Val::Px(200.0),
-                    height: Val::Px(50.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
-            )).with_children(|p| {
-                p.spawn(Text::new(label));
-            });
-        }
-    });
-}
-
-fn despawn_pause_menu(mut commands: Commands, query: Query<Entity, With<PauseUi>>) {
-    for e in &query {
-        commands.entity(e).despawn();
-    }
-}
-
-fn pause_button_interactions(
-    mut interaction_query: Query<(&Interaction, &PauseButton), With<Button>>,
+/// Centered egui pause panel. Escape resumes; buttons drive state transitions.
+fn pause_menu_ui(
+    mut contexts: EguiContexts,
+    keys: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut settings_return: ResMut<SettingsReturn>,
 ) {
-    for (interaction, button) in &mut interaction_query {
-        if *interaction == Interaction::Pressed {
-            match button {
-                PauseButton::Resume => next_state.set(GameState::InGame),
-                PauseButton::Settings => next_state.set(GameState::Settings),
-                PauseButton::MainMenu => next_state.set(GameState::MainMenu),
-            }
-        }
+    // Escape toggles back out of the pause menu.
+    if keys.just_pressed(KeyCode::Escape) {
+        next_state.set(GameState::InGame);
+        return;
     }
+
+    let ctx = contexts.ctx_mut();
+    egui::Window::new("Paused")
+        .collapsible(false)
+        .resizable(false)
+        .movable(false)
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .show(ctx, |ui| {
+            ui.set_min_width(220.0);
+            ui.vertical_centered_justified(|ui| {
+                ui.add_space(4.0);
+                if ui.button("Resume").clicked() {
+                    next_state.set(GameState::InGame);
+                }
+                if ui.button("Settings").clicked() {
+                    settings_return.0 = GameState::Paused;
+                    next_state.set(GameState::Settings);
+                }
+                if ui.button("Quit to Menu").clicked() {
+                    next_state.set(GameState::MainMenu);
+                }
+                ui.add_space(4.0);
+            });
+        });
 }

@@ -8,6 +8,8 @@ mod settings;
 mod state;
 
 use bevy::prelude::*;
+use avian3d::prelude::PhysicsPlugins;
+use bevy_egui::EguiPlugin;
 
 fn main() {
     App::new()
@@ -19,6 +21,8 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(PhysicsPlugins::default())
+        .add_plugins(EguiPlugin { enable_multipass_for_primary_context: false })
         .init_state::<state::GameState>()
         .add_plugins((
             loading::LoadingPlugin,

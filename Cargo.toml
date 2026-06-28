@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.16"
-avian3d = "0.2"
-bevy_egui = "0.33"
+avian3d = "0.3"
+bevy_egui = "0.34"
 serde = { version = "1", features = ["derive"] }
 ron = "0.8"
 

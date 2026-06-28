@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use avian3d::prelude::*;
 
 #[derive(Component)]
 pub struct Player;
@@ -21,6 +22,10 @@ pub fn spawn_player(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mu
             ..default()
         })),
         Transform::from_xyz(0.0, 1.0, 0.0),
+        RigidBody::Dynamic,
+        Collider::capsule(0.4, 1.0),
+        // Keep Kai upright; the parkour controller drives rotation explicitly.
+        LockedAxes::ROTATION_LOCKED,
     ));
 }
 

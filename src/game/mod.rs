@@ -24,9 +24,10 @@ impl Plugin for GamePlugin {
            .add_systems(OnEnter(GameState::InGame), (
                camera::spawn_game_camera,
                player::spawn_player,
-               world::spawn_placeholder_world,
+               world::setup_world,
            ))
            .add_systems(Update, (
+               world::spawn_level_scene,
                player::read_player_input,
                flow::update_flow,
                movement::apply_movement,
@@ -38,6 +39,7 @@ impl Plugin for GamePlugin {
                wisp::update_wisps,
                wisp::check_wisp_player_contact,
                dialogue::update_dialogue,
+               dialogue::dialogue_ui,
                wall_effect::handle_wall_effect_events,
                wall_effect::tick_wall_effect,
            ).run_if(in_state(GameState::InGame)))

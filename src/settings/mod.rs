@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_egui::{egui, EguiContexts};
 use serde::{Deserialize, Serialize};
 use crate::state::GameState;
 
@@ -8,8 +9,19 @@ impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
         let settings = load_settings();
         app.insert_resource(settings)
-           .add_systems(OnEnter(GameState::Settings), spawn_settings_ui)
-           .add_systems(OnExit(GameState::Settings), despawn_settings_ui);
+           .init_resource::<SettingsReturn>()
+           .add_systems(Update, settings_ui.run_if(in_state(GameState::Settings)));
+    }
+}
+
+/// The state to return to when the Settings screen's Back button is pressed.
+/// Set by whichever screen opened Settings (main menu or pause menu).
+#[derive(Resource)]
+pub struct SettingsReturn(pub GameState);
+
+impl Default for SettingsReturn {
+    fn default() -> Self {
+        Self(GameState::MainMenu)
     }
 }
 
@@ -46,17 +58,34 @@ pub fn load_settings() -> SettingsData {
         .unwrap_or_default()
 }
 
-#[derive(Component)]
-struct SettingsUi;
-
-fn spawn_settings_ui(mut commands: Commands) {
-    commands.spawn((SettingsUi, Node::default()));
-}
-
-fn despawn_settings_ui(mut commands: Commands, query: Query<Entity, With<SettingsUi>>) {
-    for e in &query {
-        commands.entity(e).despawn();
-    }
+/// Centered egui settings panel. Volume sliders write straight into
+/// [`SettingsData`]; Back persists the settings and returns to the prior screen.
+fn settings_ui(
+    mut contexts: EguiContexts,
+    mut settings: ResMut<SettingsData>,
+    settings_return: Res<SettingsReturn>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    let ctx = contexts.ctx_mut();
+    egui::Window::new("Settings")
+        .collapsible(false)
+        .resizable(false)
+        .movable(false)
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .show(ctx, |ui| {
+            ui.set_min_width(320.0);
+            ui.add(egui::Slider::new(&mut settings.master_volume, 0.0..=1.0).text("Master Volume"));
+            ui.add(egui::Slider::new(&mut settings.music_volume, 0.0..=1.0).text("Music Volume"));
+            ui.add(egui::Slider::new(&mut settings.sfx_volume, 0.0..=1.0).text("SFX Volume"));
+            ui.checkbox(&mut settings.fullscreen, "Fullscreen");
+            ui.separator();
+            if ui.button("Back").clicked() {
+                if let Err(e) = save_settings(&settings) {
+                    warn!("Failed to save settings: {e}");
+                }
+                next_state.set(settings_return.0.clone());
+            }
+        });
 }
 
 #[cfg(test)]

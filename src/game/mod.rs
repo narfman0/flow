@@ -1,6 +1,7 @@
 pub mod camera;
 pub mod dialogue;
 pub mod disruption;
+pub mod finale;
 pub mod flow;
 pub mod movement;
 pub mod player;
@@ -18,9 +19,11 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<disruption::DisruptionEvent>()
            .add_event::<wall_effect::WallEffectEvent>()
+           .add_event::<finale::BubbleCloseEvent>()
            .init_resource::<disruption::DisruptionState>()
            .init_resource::<wall_effect::WallEffectState>()
            .init_resource::<dialogue::DialogueQueue>()
+           .init_resource::<finale::FinaleState>()
            .add_systems(OnEnter(GameState::InGame), (
                camera::spawn_game_camera,
                player::spawn_player,
@@ -42,6 +45,10 @@ impl Plugin for GamePlugin {
                dialogue::dialogue_ui,
                wall_effect::handle_wall_effect_events,
                wall_effect::tick_wall_effect,
+               // Finale systems run in sequence: detect → respond → advance
+               finale::check_origin_trigger,
+               finale::handle_bubble_close_event,
+               finale::advance_finale,
            ).run_if(in_state(GameState::InGame)))
            .add_systems(OnExit(GameState::InGame), teardown_game);
     }
